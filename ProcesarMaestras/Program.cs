@@ -279,8 +279,10 @@ namespace ProcesarMaestras
                 #endregion
 
                 #region Metas de proyectos
-                Console.WriteLine($"Se procedera a recuperar la informacion de las metas de proyectod del servicio web y cargarlas en la BD. URL => {respuesta}");
-                cargaConforme = await repositorio.ProcesarMetasProyecto();
+                respuesta = await repositorio.EliminarMetaProyecto();
+                Console.WriteLine($"Se han eliminado las metas de proyecto del anio configurado");
+                Console.WriteLine($"Se procedera a recuperar la informacion de las metas de proyectos del servicio web y cargarlas en la BD. URL => {respuesta}");
+                cargaConforme = await repositorio.ObtenerMetasProyecto(respuesta);
                 if (!cargaConforme)
                 {
                     throw new Exception("Se procede a finalizar el proceso de carga masiva por error de carga de metas de proyecto");
@@ -289,8 +291,10 @@ namespace ProcesarMaestras
                 #endregion
 
                 #region Proyectos
+                respuesta = await repositorio.EliminarProyecto();
+                Console.WriteLine($"Se han eliminado los proyecto del anio configurado");
                 Console.WriteLine($"Se procedera a recuperar la informacion de los proyectos del servicio web y cargarlas en la BD. URL => {respuesta}");
-                cargaConforme = await repositorio.ProcesarProyectos();
+                cargaConforme = await repositorio.ObtenerProyectos(respuesta);
                 if (!cargaConforme)
                 {
                     throw new Exception("Se procede a finalizar el proceso de carga masiva por error de carga de proyectos");

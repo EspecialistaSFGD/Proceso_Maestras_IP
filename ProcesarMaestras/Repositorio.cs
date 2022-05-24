@@ -1326,9 +1326,9 @@ namespace ProcesarMaestras
                 var respuesta = new ProxyManager.Response { Ok = false };
 
                 respuesta = await proxyManager.CallServiceAsync(request);
-                var respuestaEjecutoras = typeConvertionsManager.XmlStringToObject<RespuestaFinalidad>(respuesta.ResponseBody, "ArrayOfFinalidad");
-                Console.WriteLine($"Se han recuperado las finalidades desde el servicio del MEF. Numero de Finalidades => {respuestaEjecutoras.Finalidades.Count}");
-                var finalidadesDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaEjecutoras.Finalidades));
+                var respuestaFinalidades = typeConvertionsManager.XmlStringToObject<RespuestaFinalidad>(respuesta.ResponseBody, "ArrayOfFinalidad");
+                Console.WriteLine($"Se han recuperado las finalidades desde el servicio del MEF. Numero de Finalidades => {respuestaFinalidades.Finalidades.Count}");
+                var finalidadesDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaFinalidades.Finalidades));
                 return RegistrarFinalidadesPorLotes(finalidadesDataTable);
             }
             catch (Exception exception)
@@ -1371,21 +1371,74 @@ namespace ProcesarMaestras
         //                       METAS_PROYECTO
         //============================================================
 
-        //Paso 48.- Procesar las metas de proyecto
-        public async Task<bool> ProcesarMetasProyecto()
+        //Paso 48.- Elimina las metas de proyecto del año actual
+        public async Task<string> EliminarMetaProyecto()
         {
             using var conexionSql = new SqlConnection(Conexion);
             try
             {
                 conexionSql.Open();
 
-                var respuesta = await conexionSql.QueryAsync<RespuestaProcesoBd>("MAPA_INVERSIONES.PROCESAR_DIM_METAS_PROYECTO", commandType: CommandType.StoredProcedure, commandTimeout: 1200);
+                var respuesta = await conexionSql.QueryAsync<RespuestaAnulacionBd>("dbo.01R_EliminarMetaProyecto", commandType: CommandType.StoredProcedure, commandTimeout: 1200);
+                return respuesta.FirstOrDefault().UrlServicio;
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception.Message);
+                throw;
+            }
+            finally
+            {
+                conexionSql.Close();
+            }
+
+        }
+
+        //Paso 49.- Obtiene las metas de proyectos para el año actual desde el servicio Web
+        public async Task<bool> ObtenerMetasProyecto(string url)
+        {
+            try
+            {
+                var request = new ProxyManager.Request();
+                request.HttpMethod = ProxyManager.HttpMethod.Get;
+                request.Uri = url;
+                request.MediaType = ProxyManager.MediaType.Xml;
+                var respuesta = new ProxyManager.Response { Ok = false };
+
+                respuesta = await proxyManager.CallServiceAsync(request);
+                var respuestaMetasProyecto = typeConvertionsManager.XmlStringToObject<RespuestaMetaProyecto>(respuesta.ResponseBody, "ArrayOfMeta");
+                Console.WriteLine($"Se han recuperado las metas de proyecto desde el servicio del MEF. Numero de Metas de proyecto => {respuestaMetasProyecto.MetasProyecto.Count}");
+                var metasProyectoDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaMetasProyecto.MetasProyecto));
+                return RegistrarMetasProyectosPorLotes(metasProyectoDataTable);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"Ocurrio un problema al intentar recuperar la informacion de metas de proyectos.\nError Asociado: {exception.Message}");
+                return false;
+            }
+        }
+
+        //Paso 50.- Registrar las metas de proyecto masivamente
+        public bool RegistrarMetasProyectosPorLotes(DataTable valores)
+        {
+            using var conexionSql = new SqlConnection(Conexion);
+            conexionSql.Open();
+
+            using SqlBulkCopy bulkCopy = new(conexionSql);
+            bulkCopy.BulkCopyTimeout = TiempoEsperaCargadoMasivo;
+            bulkCopy.BatchSize = BatchSize;
+            bulkCopy.DestinationTableName = "MAPA_INVERSIONES.DIM_METAS_PROYECTO";
+
+            try
+            {
+                bulkCopy.WriteToServer(valores);
                 return true;
             }
             catch (Exception exception)
             {
                 Console.WriteLine(exception.Message);
                 throw;
+
             }
             finally
             {
@@ -1397,21 +1450,74 @@ namespace ProcesarMaestras
         //                         PROYECTO
         //============================================================
 
-        //Paso 49.- Procesar los proyectos
-        public async Task<bool> ProcesarProyectos()
+        //Paso 51.- Elimina los proyectos del año actual
+        public async Task<string> EliminarProyecto()
         {
             using var conexionSql = new SqlConnection(Conexion);
             try
             {
                 conexionSql.Open();
 
-                var respuesta = await conexionSql.QueryAsync<RespuestaProcesoBd>("MAPA_INVERSIONES.PROCESAR_DIM_PROYECTO", commandType: CommandType.StoredProcedure, commandTimeout: 1200);
+                var respuesta = await conexionSql.QueryAsync<RespuestaAnulacionBd>("dbo.01S_EliminarProyecto", commandType: CommandType.StoredProcedure, commandTimeout: 1200);
+                return respuesta.FirstOrDefault().UrlServicio;
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception.Message);
+                throw;
+            }
+            finally
+            {
+                conexionSql.Close();
+            }
+
+        }
+
+        //Paso 46.- Obtiene los proyectos para el año actual desde el servicio Web
+        public async Task<bool> ObtenerProyectos(string url)
+        {
+            try
+            {
+                var request = new ProxyManager.Request();
+                request.HttpMethod = ProxyManager.HttpMethod.Get;
+                request.Uri = url;
+                request.MediaType = ProxyManager.MediaType.Xml;
+                var respuesta = new ProxyManager.Response { Ok = false };
+
+                respuesta = await proxyManager.CallServiceAsync(request);
+                var respuestaProyectos = typeConvertionsManager.XmlStringToObject<RespuestaProyecto>(respuesta.ResponseBody, "ArrayOfProyecto");
+                Console.WriteLine($"Se han recuperado los proyecto desde el servicio del MEF. Numero de proyectos => {respuestaProyectos.Proyectos.Count}");
+                var proyectosDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaProyectos.Proyectos));
+                return RegistrarProyectosPorLotes(proyectosDataTable);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"Ocurrio un problema al intentar recuperar la informacion de proyectos.\nError Asociado: {exception.Message}");
+                return false;
+            }
+        }
+
+        //Paso 47.- Registrar los proyectos masivamente
+        public bool RegistrarProyectosPorLotes(DataTable valores)
+        {
+            using var conexionSql = new SqlConnection(Conexion);
+            conexionSql.Open();
+
+            using SqlBulkCopy bulkCopy = new(conexionSql);
+            bulkCopy.BulkCopyTimeout = TiempoEsperaCargadoMasivo;
+            bulkCopy.BatchSize = BatchSize;
+            bulkCopy.DestinationTableName = "MAPA_INVERSIONES.DIM_PROYECTO";
+
+            try
+            {
+                bulkCopy.WriteToServer(valores);
                 return true;
             }
             catch (Exception exception)
             {
                 Console.WriteLine(exception.Message);
                 throw;
+
             }
             finally
             {
@@ -1471,180 +1577,5 @@ namespace ProcesarMaestras
                 Console.WriteLine($"Ocurrio un problema al enviar la notificacion de la carga fallida. Detalle del error => {exception.Message}");
             }
         }
-
-
-        /*
-        //Paso 1.- Obtener el listado de Ejecutoras
-        public async Task<List<WebServiceEjecutar>> ObtenerListadoInvocaciones()
-        {
-            using var conexionSql = new SqlConnection(Conexion);
-            conexionSql.Open();
-            try
-            {
-                var respuesta = await conexionSql.QueryAsync<WebServiceEjecutar>("dbo.02A_GenerarListadoEjecutora", commandType: CommandType.StoredProcedure, commandTimeout: 1200);
-                return respuesta.ToList();
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception.Message);
-                throw;
-            }
-            finally
-            {
-                conexionSql.Close();
-            }
-        }
-
-        //Paso 2.- Recuperar los datos de la ejecutora
-        public async Task<List<Item>> ObtenerItemsPorEjecutora(WebServiceEjecutar ejecutora, int numeroReintentosMaximo)
-        {
-            var itemsRespuesta = new List<Item>();
-            try
-            {
-                var invocacionesErradas = new List<string>();
-                var numeroReintento = 0;
-                var request = new ProxyManager.Request();
-
-                Console.WriteLine($"Consulta de servicio : { ejecutora.UrlWebService }.");
-                request.HttpMethod = ProxyManager.HttpMethod.Get;
-                request.Uri = ejecutora.UrlWebService;
-                request.MediaType = ProxyManager.MediaType.Xml;
-                var respuesta = new ProxyManager.Response { Ok = false };
-                while (!respuesta.Ok && (numeroReintento <= numeroReintentosMaximo))
-                {
-                    if (numeroReintento > 0)
-                    {
-                        Console.WriteLine($"Se procede con el reintento numero : {numeroReintento} de consulta al servicio");
-                    }
-                    try
-                    {
-                        respuesta = await proxyManager.CallServiceAsync(request);
-                    }
-                    catch (Exception exception)
-                    {
-                        Console.WriteLine($"Error al intentar comunicarse con el servicio del MEF. Detalle del error => {exception.Message}");
-                        respuesta.Ok = false;
-                    }
-                    numeroReintento++;
-                }
-
-                if (respuesta.Ok)
-                {
-                    var listadoItems = typeConvertionsManager.XmlStringToObject<RespuestaServicio>(respuesta.ResponseBody, "DataGasto");
-                    itemsRespuesta = listadoItems.Items;
-                }
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine($"Ocurrio un problema al intentar recuperar la informacion del servicio.\nError Asociado: {exception.Message}");
-                itemsRespuesta =  new List<Item>();
-            }
-            return itemsRespuesta;
-        }
-
-        //Paso 3.- Eliminar Item antiguos de la unidad ejecutora
-        public async Task<bool> EliminarItemsPorEjecutora(WebServiceEjecutar ejecutora)
-        {
-            using var conexionSql = new SqlConnection(Conexion);
-            try
-            {
-                conexionSql.Open();
-                var parameters = new DynamicParameters();
-                parameters.Add("@SecEjec", ejecutora.SecEjec, DbType.String, ParameterDirection.Input, 20);
-
-                var respuesta = await conexionSql.QueryAsync<WebServiceEjecutar>("dbo.02B_EliminarItemGastoPipSgPorEjecutora", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 1200);
-                return true;
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception.Message);
-                throw;
-            }
-            finally
-            {
-                conexionSql.Close();
-            }
-
-        }
-
-        //Paso 4.- Registrar los Item de la unidad ejecutora
-        public bool RegistrarItemsPorLotes(DataTable valores)
-        {
-            using var conexionSql = new SqlConnection(Conexion);
-            conexionSql.Open();
-
-            using SqlBulkCopy bulkCopy = new(conexionSql);
-            bulkCopy.BulkCopyTimeout = TiempoEsperaCargadoMasivo;
-            bulkCopy.BatchSize = BatchSize;
-            bulkCopy.DestinationTableName = "dbo.ItemGastoPIPSG";
-
-            try
-            {
-                bulkCopy.WriteToServer(valores);
-                return true;
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception.Message);
-                throw;
-
-            }
-            finally
-            {
-                conexionSql.Close();
-            }
-        }
-        //Paso 5.- Actualizar la unidad ejecutora a estado procesado
-        public async Task<bool> ActualizarEjecutora(WebServiceEjecutar ejecutora)
-        {
-            using var conexionSql = new SqlConnection(Conexion);
-            try
-            {
-                conexionSql.Open();
-                var parameters = new DynamicParameters();
-                parameters.Add("@SecEjec", ejecutora.SecEjec, DbType.String, ParameterDirection.Input, 20);
-
-                var respuesta = await conexionSql.QueryAsync<WebServiceEjecutar>("dbo.02C_ActualizarEjecutora", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 1200);
-                return true;
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception.Message);
-                throw;
-            }
-            finally
-            {
-                conexionSql.Close();
-            }
-
-        }
-
-        //Paso 6.- Enviar mail por concepto de error o éxito
-        public void SendMail(Mail configuracion, string asunto, string mensaje)
-        {
-            try
-            {
-                // create message
-                var email = new MimeMessage();
-                email.Sender = MailboxAddress.Parse(configuracion.De);
-                string[] destinatarios = configuracion.Para.Split(";");
-
-                foreach(string destinatario in destinatarios) email.To.Add(MailboxAddress.Parse(destinatario));
-                email.Subject = asunto;//"Notificaciones Mapa Inversiones - Sincronizacion de Datos del MEF";
-                email.Body = new TextPart(TextFormat.Html) { Text = mensaje };
-
-                // send email
-                using var smtp = new SmtpClient();
-                smtp.Connect(configuracion.Servidor, configuracion.Puerto, SecureSocketOptions.StartTls);
-                smtp.Authenticate(configuracion.De, configuracion.Clave);
-                smtp.Send(email);
-                smtp.Disconnect(true);
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine($"Ocurrio un problema al enviar la notificacion de la carga fallida. Detalle del error => { exception.Message }");
-            }
-        } 
-        */
     }
 }
