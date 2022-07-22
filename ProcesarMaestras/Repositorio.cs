@@ -1478,14 +1478,16 @@ namespace ProcesarMaestras
         {
             try
             {
+                var datosRequest = url.Split('|');
                 var request = new ProxyManager.Request();
-                request.HttpMethod = ProxyManager.HttpMethod.Get;
-                request.Uri = url;
+                request.HttpMethod = ProxyManager.HttpMethod.Post;
+                request.Uri = datosRequest[0];
+                request.Body = datosRequest[1];
                 request.MediaType = ProxyManager.MediaType.Xml;
                 var respuesta = new ProxyManager.Response { Ok = false };
 
                 respuesta = await proxyManager.CallServiceAsync(request);
-                var respuestaProyectos = typeConvertionsManager.XmlStringToObject<RespuestaProyecto>(respuesta.ResponseBody, "ArrayOfProyecto");
+                var respuestaProyectos = typeConvertionsManager.XmlStringToObject<RespuestaProyecto>(respuesta.ResponseBody, "ObtenerProyectosPorAnoResult");
                 Console.WriteLine($"Se han recuperado los proyecto desde el servicio del MEF. Numero de proyectos => {respuestaProyectos.Proyectos.Count}");
                 var proyectosDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaProyectos.Proyectos));
                 return RegistrarProyectosPorLotes(proyectosDataTable);

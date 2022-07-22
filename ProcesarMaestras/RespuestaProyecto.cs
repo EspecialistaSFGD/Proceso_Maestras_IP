@@ -4,11 +4,11 @@ using System.Collections.Generic;
 namespace ProcesarMaestras
 {
 
-    [JsonObject(Title = "ArrayOfProyecto")]
+    [JsonObject(Title = "ObtenerProyectosPorAnoResult")]
     public class RespuestaProyecto
     {
-        [JsonProperty("@xmlns")]
-        public string UriServicio { get; set; } = "http://www.mef.gob.pe/";
+        //[JsonProperty("@xmlns")]
+        //public string UriServicio { get; set; } = "http://www.mef.gob.pe/";
         [JsonProperty("Proyecto")]
         [JsonConverter(typeof(SingleOrArrayConverter<Proyecto>))]
         public List<Proyecto> Proyectos { get; set; } = new List<Proyecto>();

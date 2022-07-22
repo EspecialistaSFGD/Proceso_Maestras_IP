@@ -73,7 +73,7 @@ namespace ProcesarMaestras
                 Console.WriteLine($"    Proceso de carga de Tablas Maestras para el anio configurado");
                 Console.WriteLine($"--------------------------------------------------------------------");
                 var typeConvertionsManager = TypeConvertionManager.GetNewTypeConvertionManager();
-
+                
                 #region Componentes
                 var respuesta = await repositorio.EliminarComponentes();
                 Console.WriteLine($"Se han eliminado los componentes del anio configurado");
@@ -290,6 +290,7 @@ namespace ProcesarMaestras
                 Console.WriteLine($"Se han registrado las metas de proyecto correctamente en la base de datos");
                 #endregion
 
+                
                 #region Proyectos
                 respuesta = await repositorio.EliminarProyecto();
                 Console.WriteLine($"Se han eliminado los proyecto del anio configurado");
