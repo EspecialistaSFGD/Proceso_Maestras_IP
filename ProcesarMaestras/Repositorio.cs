@@ -6,9 +6,12 @@ using MimeKit.Text;
 using NextSIT.Utility;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace ProcesarMaestras
@@ -20,6 +23,7 @@ namespace ProcesarMaestras
         private readonly TypeConvertionManager typeConvertionsManager;
         private readonly int TiempoEsperaCargadoMasivo;
         private readonly int BatchSize;
+        private readonly string SOAP_ACTION;
 
         public Repositorio(string conexion)
         {
@@ -28,6 +32,7 @@ namespace ProcesarMaestras
             typeConvertionsManager = TypeConvertionManager.GetNewTypeConvertionManager();
             TiempoEsperaCargadoMasivo = 10000;
             BatchSize = 50000;
+            SOAP_ACTION = "SOAPAction";
         }
 
         //============================================================
@@ -1479,18 +1484,34 @@ namespace ProcesarMaestras
             try
             {
                 var datosRequest = url.Split('|');
-                var request = new ProxyManager.Request();
-                request.HttpMethod = ProxyManager.HttpMethod.Post;
-                request.Uri = datosRequest[0];
-                request.Body = datosRequest[1];
-                request.MediaType = ProxyManager.MediaType.Xml;
-                var respuesta = new ProxyManager.Response { Ok = false };
+                var cabeceras = new Dictionary<string, string>();
+                cabeceras.Add(SOAP_ACTION, datosRequest[2]);
 
-                respuesta = await proxyManager.CallServiceAsync(request);
-                var respuestaProyectos = typeConvertionsManager.XmlStringToObject<RespuestaProyecto>(respuesta.ResponseBody, "ObtenerProyectosPorAnoResult");
-                Console.WriteLine($"Se han recuperado los proyecto desde el servicio del MEF. Numero de proyectos => {respuestaProyectos.Proyectos.Count}");
-                var proyectosDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaProyectos.Proyectos));
-                return RegistrarProyectosPorLotes(proyectosDataTable);
+                var clientHandler = new HttpClientHandler();
+                using (var client = new HttpClient(clientHandler))
+                {
+                    client.Timeout = TimeSpan.FromMinutes(120);
+                    foreach (var item in cabeceras)
+                    {
+                        client.DefaultRequestHeaders.Add(item.Key, item.Value);
+                    }
+
+                    var response = await client.PostAsync(datosRequest[0], new StringContent(datosRequest[1], Encoding.UTF8, "text/xml"));
+
+                    if (response.IsSuccessStatusCode) 
+                    {
+                        var body = await response.Content.ReadAsStringAsync();
+                        var respuestaProyectos = typeConvertionsManager.XmlStringToObject<RespuestaProyecto>(body, "soap:Envelope.soap:Body.ObtenerProyectosPorAnoResponse.ObtenerProyectosPorAnoResult");
+                        Console.WriteLine($"Se han recuperado los proyecto desde el servicio del MEF. Numero de proyectos => {respuestaProyectos.Proyectos.Count}");
+                        var proyectosDataTable = typeConvertionsManager.ArrayListToDataTable(new ArrayList(respuestaProyectos.Proyectos));
+                        return RegistrarProyectosPorLotes(proyectosDataTable);
+                    }
+                    else
+                    {
+                        throw new Exception($"Error en respuesta =>  { await response.Content.ReadAsStringAsync() }");
+                    }
+
+                }
             }
             catch (Exception exception)
             {
